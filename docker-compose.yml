@@ -13,6 +13,11 @@ services:
     <<: *dev
     command: pytest -v --cov=. --cov-report term-missing
 
+  # run the code!
+  run:
+    <<: *dev
+    command: python stock_game.py
+
   # run the linters
   # lint:
   #   <<: *dev
