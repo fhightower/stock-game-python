@@ -13,6 +13,10 @@ services:
     <<: *dev
     command: pytest -v --cov=. --cov-report term-missing
 
+  black:
+    <<: *dev
+    command: black .
+
   play:
     <<: *dev
     command: python stock_game.py
