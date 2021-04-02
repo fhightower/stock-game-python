@@ -13,8 +13,7 @@ services:
     <<: *dev
     command: pytest -v --cov=. --cov-report term-missing
 
-  # run the code!
-  run:
+  play:
     <<: *dev
     command: python stock_game.py
 
