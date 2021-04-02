@@ -18,24 +18,28 @@ def _calculate_buy_options(answers: columbo.Answers):
         return [str(i) for i in range(1, max_quantity + 1)]
 
 
-which_action = columbo.Choice(
-    "action",
-    "What would you like to do?",
-    default="buy",
-    options=["buy", "sell", "view", "done"]
-)
-which_stock = columbo.Choice(
-    "stock_name",
-    "Which stock?",
-    default=STOCKS[0][0],
-    options=[stock[0] for stock in STOCKS]
-)
-how_much_stock = columbo.Choice(
-    "stock_quantity",
-    "How much?",
-    default='1',
-    options=_calculate_buy_options
-)
+questions = [
+    columbo.Choice(
+        "action",
+        "What would you like to do?",
+        default="buy",
+        options=["buy", "sell", "view", "done"]
+    ),
+    columbo.Choice(
+        "stock_name",
+        "Which stock?",
+        default=STOCKS[0][0],
+        options=lambda answers: [stock[0] for stock in STOCKS if answers['prices'][stock[0]] <= answers['money']],
+        should_ask=lambda answers: answers['action'] == 'buy' or answers['action'] == 'sell',
+    ),
+    columbo.Choice(
+        "stock_quantity",
+        "How much?",
+        default='1',
+        options=_calculate_buy_options,
+        should_ask=lambda answers: answers['action'] == 'buy' or answers['action'] == 'sell',
+    )
+]
 
 
 def _get_prices():
@@ -48,37 +52,23 @@ def _is_last_day(day):
 
 
 def buy(money, stock_portfolio, prices):
-    # todo: provide way to leave buying sequence once started
-    stock_name = columbo.get_answers([which_stock])['stock_name']
-    stock_price = prices[stock_name]
+    stock_price = prices[answers['stock_name']]
+    cost = stock_price * answers['stock_quantity']
 
-    if money < stock_price:
-        message = 'You do not have enough money to buy this stock.'
-        print(message)
-        return money, stock_portfolio
-    else:
-        stock_quantity = int(columbo.get_answers([how_much_stock], answers={'stock_price': stock_price, 'money': money})['stock_quantity'])
-        cost = stock_price * stock_quantity
-        money -= cost
-        stock_portfolio[stock_name] += stock_quantity
-        return money, stock_portfolio
+    money -= cost
+    stock_portfolio[stock_name] += stock_quantity
+
+    return money, stock_portfolio
 
 
-def sell(money, stock_portfolio, prices):
-    # todo: provide way to leave selling sequence once started
-    stock_name = columbo.get_answers([which_stock])['stock_name']
-    stock_price = prices[stock_name]
+def sell(money, stock_portfolio, prices, answers: columbo.Answers):
+    stock_price = prices[answers['stock_name']]
+    cost = stock_price * answers['stock_quantity']
 
-    if not stock_portfolio[stock_name]:
-        message = 'You do not have any of this stock.'
-        print(message)
-        return money, stock_portfolio
-    else:
-        stock_quantity = int(columbo.get_answers([how_much_stock], answers={'stock_in_portfolio': stock_portfolio[stock_name]})['stock_quantity'])
-        cost = stock_price * stock_quantity
-        money += cost
-        stock_portfolio[stock_name] -= stock_quantity
-        return money, stock_portfolio
+    money += cost
+    stock_portfolio[stock_name] -= stock_quantity
+
+    return money, stock_portfolio
 
 
 def _print_output(money, stock_portfolio):
@@ -92,13 +82,13 @@ def _play_day(money, stock_portfolio):
 
     while True:
         _print_output(money, stock_portfolio)
-        action = columbo.get_answers([which_action])['action']
+        answers = columbo.get_answers(questions, answers={'money': money, 'portfolio': stock_portfolio, 'prices': prices})
 
-        if action == 'buy':
+        if answers['action'] == 'buy':
             money, stock_portfolio = buy(money, stock_portfolio, prices)
-        elif action == 'sell':
-            money, stock_portfolio = sell(money, stock_portfolio, prices)
-        elif action == 'view':
+        elif answers['action'] == 'sell':
+            money, stock_portfolio = sell(money, stock_portfolio, prices, answers)
+        elif answers['action'] == 'view':
             # todo: handle this action
             pass
         else:
